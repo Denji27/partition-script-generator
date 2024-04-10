@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class PartitionGenerator extends JDialog {
     private JPanel contentPane;
@@ -111,7 +112,7 @@ public class PartitionGenerator extends JDialog {
             StringBuilder result = new StringBuilder();
             String[] vals = rawValues.split("\n");
             for (int i = 0; i < vals.length; i++) {
-                List<String> elements = Arrays.stream(vals[i].trim().split(",\\s*")).toList();
+                List<String> elements = Arrays.stream(vals[i].trim().split(",\\s*")).collect(Collectors.toList());
                 ListPartitionRequirement requirement =
                         ListPartitionRequirement.builder()
                                 .values(elements)
@@ -213,6 +214,48 @@ public class PartitionGenerator extends JDialog {
                 RangePartitionRequirement rangePartitionRequirement =
                         RangePartitionRequirement.builder()
                                 .dataType(DataType.DAY)
+                                .from(f)
+                                .to(t)
+                                .partitionType(PartitionType.RANGE)
+                                .tableName(requirement.getTableName())
+                                .build();
+                from = t;
+                script.append(genSingleScript(rangePartitionRequirement));
+                script.append("; \n");
+            }
+        }
+
+        if (requirement.getDataType().equals(DataType.MONTH)) {
+            LocalDate firstOfFrom = from.withDayOfMonth(1);
+            LocalDate lastOfTo = to.withDayOfMonth(1);
+            long monthsBetween = ChronoUnit.MONTHS.between(firstOfFrom, lastOfTo);
+            for (int i = 0; i <= monthsBetween; i++) {
+                LocalDate f = from.withDayOfMonth(1);
+                LocalDate t = f.plusMonths(1);
+                RangePartitionRequirement rangePartitionRequirement =
+                        RangePartitionRequirement.builder()
+                                .dataType(DataType.MONTH)
+                                .from(f)
+                                .to(t)
+                                .partitionType(PartitionType.RANGE)
+                                .tableName(requirement.getTableName())
+                                .build();
+                from = t;
+                script.append(genSingleScript(rangePartitionRequirement));
+                script.append("; \n");
+            }
+        }
+
+        if (requirement.getDataType().equals(DataType.YEAR)) {
+            LocalDate firstOfFrom = from.withDayOfYear(1);
+            LocalDate lastOfTo = to.withDayOfYear(1);
+            long yearsBetween = ChronoUnit.YEARS.between(firstOfFrom, lastOfTo);
+            for (int i = 0; i <= yearsBetween; i++) {
+                LocalDate f = from.withDayOfYear(1);
+                LocalDate t = f.plusYears(1);
+                RangePartitionRequirement rangePartitionRequirement =
+                        RangePartitionRequirement.builder()
+                                .dataType(DataType.YEAR)
                                 .from(f)
                                 .to(t)
                                 .partitionType(PartitionType.RANGE)
